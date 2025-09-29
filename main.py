@@ -2,7 +2,6 @@ from collections import UserDict
 from datetime import datetime, date, timedelta
 
 
-# ===== Базові класи =====
 class Field:
     def __init__(self, value):
         self.value = value
@@ -112,7 +111,6 @@ class AddressBook(UserDict):
         return "\n".join(str(record) for record in self.data.values())
 
 
-# ===== Допоміжні функції =====
 def adjust_for_weekend(date_obj):
     if date_obj.weekday() == 5:  # субота
         return date_obj + timedelta(days=2)
@@ -121,14 +119,13 @@ def adjust_for_weekend(date_obj):
     return date_obj
 
 
-# ===== Декоратор для обробки помилок =====
 def input_error(func):
     def inner(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except ValueError as e:
             return str(e)
-        except KeyError:
+        except (AttributeError, KeyError):
             return "Contact not found."
         except IndexError:
             return "Not enough arguments."
@@ -138,21 +135,26 @@ def input_error(func):
 
 
 def parse_input(user_input):
-    cmd, *args = user_input.split()
-    cmd = cmd.strip().lower()
+    if not user_input or not user_input.strip():
+        return "", []
+    parts = user_input.split()
+    cmd = parts[0].strip().lower()
+    args = parts[1:]
     return cmd, args
 
 
-# ===== Хендлери команд =====
 @input_error
 def add_contact(args, book: AddressBook):
-    name, phone, *_ = args
+    if len(args) < 2:
+        raise IndexError
+    name, phone = args[0], args[1]
     record = book.find(name)
-    message = "Contact updated."
     if record is None:
         record = Record(name)
         book.add_record(record)
         message = "Contact added."
+    else:
+        message = "Contact updated."
     if phone:
         record.add_phone(phone)
     return message
@@ -160,20 +162,20 @@ def add_contact(args, book: AddressBook):
 
 @input_error
 def change_contact(args, book: AddressBook):
-    name, old_phone, new_phone = args
+    if len(args) < 3:
+        raise IndexError
+    name, old_phone, new_phone = args[0], args[1], args[2]
     record = book.find(name)
-    if not record:
-        raise KeyError
     record.edit_phone(old_phone, new_phone)
     return "Phone updated."
 
 
 @input_error
 def show_phone(args, book: AddressBook):
+    if len(args) < 1:
+        raise IndexError
     name = args[0]
     record = book.find(name)
-    if not record:
-        raise KeyError
     return "; ".join(ph.value for ph in record.phones)
 
 
@@ -183,20 +185,20 @@ def show_all(book: AddressBook):
 
 @input_error
 def add_birthday(args, book: AddressBook):
-    name, bday = args
+    if len(args) < 2:
+        raise IndexError
+    name, bday = args[0], args[1]
     record = book.find(name)
-    if not record:
-        raise KeyError
     record.add_birthday(bday)
     return "Birthday added."
 
 
 @input_error
 def show_birthday(args, book: AddressBook):
+    if len(args) < 1:
+        raise IndexError
     name = args[0]
     record = book.find(name)
-    if not record:
-        raise KeyError
     if not record.birthday:
         return "No birthday set."
     return record.birthday.value
@@ -210,7 +212,6 @@ def birthdays(args, book: AddressBook):
     return "\n".join([f"{u['name']}: {u['birthday']}" for u in upcoming])
 
 
-# ===== Основна функція =====
 def main():
     book = AddressBook()
     print("Welcome to the assistant bot!")
@@ -218,6 +219,9 @@ def main():
     while True:
         user_input = input("Enter a command: ")
         command, args = parse_input(user_input)
+
+        if command == "":
+            continue
 
         if command in ["close", "exit"]:
             print("Good bye!")
