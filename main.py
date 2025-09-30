@@ -87,22 +87,18 @@ class AddressBook(UserDict):
     def get_upcoming_birthdays(self, days=7):
         upcoming_birthdays = []
         today = date.today()
-
         for record in self.data.values():
             if record.birthday:
                 bday = record.birthday.date_obj()
                 birthday_this_year = bday.replace(year=today.year)
-
                 if birthday_this_year < today:
                     birthday_this_year = birthday_this_year.replace(year=today.year + 1)
-
                 if 0 <= (birthday_this_year - today).days <= days:
                     birthday_this_year = adjust_for_weekend(birthday_this_year)
                     upcoming_birthdays.append({
                         "name": record.name.value,
                         "birthday": birthday_this_year.strftime("%d.%m.%Y")
                     })
-
         return upcoming_birthdays
 
     def __str__(self):
@@ -112,9 +108,9 @@ class AddressBook(UserDict):
 
 
 def adjust_for_weekend(date_obj):
-    if date_obj.weekday() == 5:  # субота
+    if date_obj.weekday() == 5:  # Saturday
         return date_obj + timedelta(days=2)
-    elif date_obj.weekday() == 6:  # неділя
+    elif date_obj.weekday() == 6:  # Sunday
         return date_obj + timedelta(days=1)
     return date_obj
 
@@ -127,8 +123,6 @@ def input_error(func):
             return str(e)
         except (AttributeError, KeyError):
             return "Contact not found."
-        except IndexError:
-            return "Not enough arguments."
         except Exception as e:
             return f"Error: {e}"
     return inner
@@ -145,9 +139,10 @@ def parse_input(user_input):
 
 @input_error
 def add_contact(args, book: AddressBook):
-    if len(args) < 2:
-        raise IndexError
-    name, phone = args[0], args[1]
+    try:
+        name, phone = args
+    except ValueError:
+        raise ValueError("Not enough arguments. Use: add <name> <phone>")
     record = book.find(name)
     if record is None:
         record = Record(name)
@@ -155,27 +150,32 @@ def add_contact(args, book: AddressBook):
         message = "Contact added."
     else:
         message = "Contact updated."
-    if phone:
-        record.add_phone(phone)
+    record.add_phone(phone)
     return message
 
 
 @input_error
 def change_contact(args, book: AddressBook):
-    if len(args) < 3:
-        raise IndexError
-    name, old_phone, new_phone = args[0], args[1], args[2]
+    try:
+        name, old_phone, new_phone = args
+    except ValueError:
+        raise ValueError("Not enough arguments.")
     record = book.find(name)
+    if not record:
+        raise ValueError("Contact not found.")
     record.edit_phone(old_phone, new_phone)
     return "Phone updated."
 
 
 @input_error
 def show_phone(args, book: AddressBook):
-    if len(args) < 1:
-        raise IndexError
-    name = args[0]
+    try:
+        name, = args
+    except ValueError:
+        raise ValueError("Not enough arguments.")
     record = book.find(name)
+    if not record or not record.phones:
+        return "No phones found for this contact."
     return "; ".join(ph.value for ph in record.phones)
 
 
@@ -185,21 +185,25 @@ def show_all(book: AddressBook):
 
 @input_error
 def add_birthday(args, book: AddressBook):
-    if len(args) < 2:
-        raise IndexError
-    name, bday = args[0], args[1]
+    try:
+        name, bday = args
+    except ValueError:
+        raise ValueError("Not enough arguments.")
     record = book.find(name)
+    if not record:
+        raise ValueError("Contact not found.")
     record.add_birthday(bday)
     return "Birthday added."
 
 
 @input_error
 def show_birthday(args, book: AddressBook):
-    if len(args) < 1:
-        raise IndexError
-    name = args[0]
+    try:
+        name, = args
+    except ValueError:
+        raise ValueError("Not enough arguments. Use: show-birthday <name>")
     record = book.find(name)
-    if not record.birthday:
+    if not record or not record.birthday:
         return "No birthday set."
     return record.birthday.value
 
