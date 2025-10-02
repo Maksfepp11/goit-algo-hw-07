@@ -120,7 +120,7 @@ def input_error(func):
         try:
             return func(*args, **kwargs)
         except ValueError as e:
-            return str(e)
+            return str(e) or "Not enough arguments."
         except (AttributeError, KeyError):
             return "Contact not found."
         except Exception as e:
@@ -139,10 +139,7 @@ def parse_input(user_input):
 
 @input_error
 def add_contact(args, book: AddressBook):
-    try:
-        name, phone = args
-    except ValueError:
-        raise ValueError("Not enough arguments. Use: add <name> <phone>")
+    name, phone = args
     record = book.find(name)
     if record is None:
         record = Record(name)
@@ -156,23 +153,15 @@ def add_contact(args, book: AddressBook):
 
 @input_error
 def change_contact(args, book: AddressBook):
-    try:
-        name, old_phone, new_phone = args
-    except ValueError:
-        raise ValueError("Not enough arguments.")
+    name, old_phone, new_phone = args
     record = book.find(name)
-    if not record:
-        raise ValueError("Contact not found.")
     record.edit_phone(old_phone, new_phone)
     return "Phone updated."
 
 
 @input_error
 def show_phone(args, book: AddressBook):
-    try:
-        name, = args
-    except ValueError:
-        raise ValueError("Not enough arguments.")
+    name, = args
     record = book.find(name)
     if not record or not record.phones:
         return "No phones found for this contact."
@@ -185,23 +174,15 @@ def show_all(book: AddressBook):
 
 @input_error
 def add_birthday(args, book: AddressBook):
-    try:
-        name, bday = args
-    except ValueError:
-        raise ValueError("Not enough arguments.")
+    name, bday = args
     record = book.find(name)
-    if not record:
-        raise ValueError("Contact not found.")
     record.add_birthday(bday)
     return "Birthday added."
 
 
 @input_error
 def show_birthday(args, book: AddressBook):
-    try:
-        name, = args
-    except ValueError:
-        raise ValueError("Not enough arguments. Use: show-birthday <name>")
+    name, = args
     record = book.find(name)
     if not record or not record.birthday:
         return "No birthday set."
